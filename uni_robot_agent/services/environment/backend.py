@@ -35,6 +35,11 @@ class EnvironmentBackend(Protocol):
     def close(self) -> None: ...
 
 
+class ProgressBackend(Protocol):
+    """Optional privileged score query, declared by the progress capability."""
+    def progress(self) -> dict[str, Any]: ...
+
+
 class PathBackend(Protocol):
     """Optional whole-path capability, declared by environment metadata ``motion_execution: wholepath``."""
     def step_path(self, command: PathCommand) -> StepReceipt: ...

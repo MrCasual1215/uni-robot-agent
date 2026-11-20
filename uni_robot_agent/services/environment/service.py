@@ -112,6 +112,15 @@ class EnvironmentService:
                 raise KeyError(request_id)
             return dict(self._requests[request_id])
 
+    def progress(self) -> dict:
+        """Privileged evaluation read; never finalize or advance native execution."""
+        if "progress" not in self._info.capabilities:
+            raise ServiceError("unsupported_capability", "Progress evaluation is unavailable", status=422)
+        with self._motion_lock:
+            if self._closed:
+                raise ServiceError("closed", "The episode is closed")
+            return self.backend.progress()
+
     def outcome(self) -> dict:
         with self._state_lock:
             if self._outcome is None:

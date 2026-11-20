@@ -79,7 +79,7 @@ class OwnedProcess:
         self.forced = False
         self._closed = False
 
-    def start(self, *, input_data=None):
+    def start(self, *, input_data=None, pass_fds=()):
         if self.process is not None:
             raise RuntimeError('Process already started')
         if self.log_path:
@@ -87,7 +87,7 @@ class OwnedProcess:
             self._log = self.log_path.open('ab')
         try:
             self.process = subprocess.Popen(self.command, cwd=self.cwd,
-                env={**os.environ, **self.environment}, start_new_session=True,
+                env={**os.environ, **self.environment}, start_new_session=True, pass_fds=pass_fds,
                 stdin=subprocess.PIPE if input_data is not None else subprocess.DEVNULL,
                 stdout=self._log, stderr=subprocess.STDOUT if self._log else None)
             if input_data is not None:

@@ -404,6 +404,13 @@ class Adapter:
             terminated=bool(self.ended and not truncated), truncated=bool(truncated),
         ).freeze()
 
+    def progress(self):
+        """Read native score without advancing physics or finalizing the episode."""
+        if not self.started:
+            raise RequestRejected("Native episode has not started")
+        return {"native_score": self.outcome()["native_score"], "steps": self.steps,
+                "state_version": self.read_state().state_version}
+
     def outcome(self):
         complete = self.ended
         truncated = complete and self.steps >= self.env.step_lim and not self.env.success[self.slot]

@@ -112,6 +112,10 @@ def build_router(service: EnvironmentService | None = None, *,
     def request_status(request_id: str, current: Current):
         return current.request_status(request_id)
 
+    @router.get("/progress")
+    def progress(current: Current):
+        return current.progress()
+
     @router.get("/outcome")
     def outcome(current: Current):
         return current.outcome()

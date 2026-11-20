@@ -130,12 +130,13 @@ class _Server(uvicorn.Server):
 
 
 class HttpServer:
-    def __init__(self, app, host="127.0.0.1", port=0):
+    def __init__(self, app, host="127.0.0.1", port=0, *, sock=None):
         self.app = app
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket = sock if sock is not None else socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.socket.bind((host, port))
+            if sock is None:
+                self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                self.socket.bind((host, port))
             self.address = self.socket.getsockname()
             self.server_port = self.address[1]
             self._server = _Server(uvicorn.Config(app, host=host, port=port, log_level="warning",

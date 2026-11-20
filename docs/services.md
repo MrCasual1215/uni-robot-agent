@@ -112,7 +112,7 @@ have no network superclass, socket server or facade.
 
 | Service | Important routes | State ownership |
 |---|---|---|
-| Environment | `GET /info`, `/snapshots/latest`, `/snapshots/{id}`, `/records`, `/artifacts/{id}`, `/requests/{id}`, `/outcome`; `POST /steps`, `/previews`, `/captures`, `/finish` | Prepared episode, native state, immutable snapshots, ordered execution receipts |
+| Environment | `GET /info`, `/snapshots/latest`, `/snapshots/{id}`, `/records`, `/artifacts/{id}`, `/requests/{id}`, `/outcome`, `/progress` (when supported); `POST /steps`, `/previews`, `/captures`, `/finish` | Prepared episode, native state, immutable snapshots, ordered execution receipts |
 | Actor | `GET /healthz`, `/info`; `POST /sessions`; `GET`/`DELETE /sessions/{id}`; `POST /predict`; `GET /sessions/{id}/requests/{id}` | Model identity, explicit inference sessions, RNG, sequence and inference receipts |
 | Perception | `GET /healthz`, `/info`; `POST /segment` | Model instance, bounded inference queue and embedding cache |
 
@@ -122,6 +122,8 @@ episode, request and sequence identities; the service distinguishes rejected,
 completed and uncertain execution. A lost response must be reconciled through
 the receipt. Closing a client releases its connections; ending the episode is
 an explicit `finish` operation.
+
+`GET /progress` is an optional privileged evaluation read advertised by the `progress` capability. RoboDojo returns `native_score` on its native 0–1 scale, `steps`, and `state_version`, serialized with native execution on the simulator owner thread. The query neither steps physics nor performs a final success check. Unsupported environments return 422. Evaluation collectors may use it at settled action boundaries; agent tools must not return these scores as observation feedback. Final episode evaluation remains `GET /outcome` after finalization.
 
 `ActorClient` checks `/info`, including protocol, model identity, profile and
 an optional expected checkpoint hash, then creates an explicit HTTP session.

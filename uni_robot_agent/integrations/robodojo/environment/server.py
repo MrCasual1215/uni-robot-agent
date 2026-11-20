@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import socket
 import sys
 import threading
 import traceback
@@ -68,6 +69,9 @@ class _OwnerThreadBackend:
     def capture(self, cameras=None, *, high_resolution=False):
         return self._call(self.backend.capture, cameras, high_resolution=high_resolution)
 
+    def progress(self):
+        return self._call(self.backend.progress)
+
     def finish(self, reason, status=None):
         return self._call(self.backend.finish, reason, status)
 
@@ -90,10 +94,13 @@ def _serve(adapter, args, app, *, integration="robodojo"):
                                  "layout_sha256": args.layout_sha256,
                                  "instruction": adapter.read_state().metadata["instruction"],
                                  "skill_namespace": "robodojo"})
+    if hasattr(adapter, "progress"):
+        info.capabilities.append("progress")
     service = EnvironmentService(owner, info, ArtifactStore(args.output_dir))
     try:
         service.initialize()
-        server = HttpServer(create_app(build_router(service)), host=args.host, port=args.port)
+        sock = socket.socket(fileno=args.listen_fd) if args.listen_fd is not None else None
+        server = HttpServer(create_app(build_router(service)), host=args.host, port=args.port, sock=sock)
     except BaseException:
         service.close(reason="initialization_failed")
         raise
@@ -141,6 +148,7 @@ def main(argv=None, *, integration="robodojo", runtime=native_compat):
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=18760)
+    parser.add_argument("--listen-fd", type=int, help="Inherit a bound TCP socket from the deployment owner")
     parser.add_argument("--ik-joint-delta-guard", action=argparse.BooleanOptionalAction, default=True,
                         help="reject native IK joint deltas above 1 rad before execution (default: on)")
     parser.add_argument("--no-depth", action="store_true",
@@ -148,6 +156,8 @@ def main(argv=None, *, integration="robodojo", runtime=native_compat):
     parser.add_argument("--no-camera-calibration", action="store_true",
                         help="With --no-depth, capture RGB without camera intrinsics or extrinsics")
     args = parser.parse_args(argv)
+    if args.listen_fd is not None:
+        os.set_inheritable(args.listen_fd, False)
     if args.no_camera_calibration and not args.no_depth:
         parser.error("--no-camera-calibration requires --no-depth")
     try:

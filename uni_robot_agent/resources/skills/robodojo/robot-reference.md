@@ -35,10 +35,10 @@ The calibration JSON contains:
 - `arms[arm].model_id`: the matching robot asset model.
 - `arms[arm].hand`: pad-gap convention, opening model and zero-joint hand bounds.
 - `arms[arm].hand.contact_geometry`: grasp-site pad/finger bounds at a declared reference gap, with each finger's `translation_per_gap_m`. This is symmetric nominal geometry, not individual measured finger poses.
-- `models[id].asset_sha256`: source asset fingerprints.
+- `models[id].asset_sha256`: a mapping from asset filenames to SHA-256 hex strings. For example, `model["asset_sha256"]["X5A.urdf"][:12]` gives the URDF hash prefix for `model = calibration["models"][id]`.
 - `models[id].joints`: parent/child, joint frame, axis and URDF limits.
 - `models[id].grasp_site`: native link6-to-site transform and axis meanings.
-- `models[id].collision_geometry`: link-local convex proxies from URDF collision meshes.
+- `models[id].collision_geometry`: a list of link-local convex proxies from URDF collision meshes. Iterate over the entries and read each entry's `link`, `vertices` and `triangles`.
 - `models[id].pads`: distal contact-pad triangles, centroids and areas in finger-link coordinates.
 - `models[id].links_without_collision_geometry`: links absent from that collision representation.
 

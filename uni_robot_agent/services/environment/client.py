@@ -164,6 +164,10 @@ class EnvironmentClient:
     def finish(self, request: FinishRequest) -> dict:
         return self._post("finish", request)
 
+    def progress(self) -> dict:
+        """Read privileged native progress for evaluation, not model feedback."""
+        return self._get("progress")
+
     def outcome(self) -> dict:
         return self._get("outcome")
 

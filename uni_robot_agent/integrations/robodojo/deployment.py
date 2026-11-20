@@ -132,4 +132,5 @@ def plan(args, runtime, output, run_id):
     connect_host = '127.0.0.1' if args.host == '0.0.0.0' else args.host
     return LaunchPlan(tuple(command), f'http://{connect_host}:{port}',
                       {'integration': 'robodojo', 'episode_id': run_id, 'task': task,
-                       'environment.metadata.layout_sha256': digest}, runtime.environment, output)
+                       'environment.metadata.layout_sha256': digest}, runtime.environment, output,
+                      listen_fd_option='--listen-fd')

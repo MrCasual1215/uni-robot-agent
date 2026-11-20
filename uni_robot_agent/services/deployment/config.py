@@ -57,6 +57,7 @@ class LaunchPlan:
     expected: dict
     environment: dict[str, str] = field(default_factory=dict)
     cwd: Path | None = None
+    listen_fd_option: str | None = None
 
 
 def adapter_for(args):

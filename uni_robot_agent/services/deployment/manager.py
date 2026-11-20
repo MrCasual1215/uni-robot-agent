@@ -29,7 +29,7 @@ class Deployment:
     def save(self):
         write_json_atomic(self.output / 'deployment.json', self.record)
 
-    def start(self):
+    def start(self, *, listen_socket=None):
         if self._closed:
             raise RuntimeError("Deployment is closed")
         if self.info is not None:
@@ -43,19 +43,28 @@ class Deployment:
             self.adapter.verify(runtime)
             plan = self.adapter.plan(self.args, runtime, self.output, self.run_id)
             self.url = plan.url
-            require_free_port(plan.url)
+            command = plan.command
+            pass_fds = ()
+            if listen_socket is None:
+                require_free_port(plan.url)
+            else:
+                if plan.listen_fd_option is None:
+                    raise ValueError("This service does not accept a prebound socket")
+                fd = listen_socket.fileno()
+                command = (*command, plan.listen_fd_option, str(fd))
+                pass_fds = (fd,)
             self.record.update(runtime=runtime.name, recipe_digest=runtime.recipe_digest,
                                runtime_manifest=str(runtime.root / 'runtime.json'), url=plan.url,
                                expected=plan.expected, state='starting')
             self.save()
             environment = {**plan.environment, **gpu_environment(self.args.deploy_gpu),
                            'PYTHONPATH': '', 'PYTHONNOUSERSITE': '1'}
-            self.process = OwnedProcess(plan.command, environment=environment, cwd=plan.cwd,
+            self.process = OwnedProcess(command, environment=environment, cwd=plan.cwd,
                 log_path=self.output / 'service.log', shutdown_timeout=self.args.shutdown_timeout_s)
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise TimeoutError('Runtime validation exhausted the startup budget')
-            self.process.start()
+            self.process.start(pass_fds=pass_fds)
             self.info = self.process.wait_ready(plan.url, plan.expected, remaining)
             self.record.update(state='ready', pid=self.process.process.pid, identity=self.info)
             self.save()
@@ -85,11 +94,13 @@ class Deployment:
         self.close()
 
 
-def start_deployment(config: DeploymentConfig) -> Deployment:
-    """Start a prepared local service; the caller owns close() or its context manager."""
+def start_deployment(config: DeploymentConfig, *, listen_socket=None) -> Deployment:
+    """Start a local service. A supplied bound TCP socket stays owned by the caller."""
     args = config.resolve()
+    if listen_socket is not None:
+        args.host, args.port = listen_socket.getsockname()[:2]
     output, run_id = output_directory(args, args.service)
-    return Deployment(args, adapter_for(args), output, run_id).start()
+    return Deployment(args, adapter_for(args), output, run_id).start(listen_socket=listen_socket)
 
 
 def output_directory(args, role):
