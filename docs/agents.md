@@ -53,6 +53,17 @@ environment variable names forwarded to the runtime. Model routes and
 credentials belong to the Harness profile; `--provider-url` is rejected and no
 UNI gateway is created, so model records are the Harness Session logs.
 
+A spec may set `webHost` to an explicit `http://127.0.0.1:<port>` URL. The
+`agents/dsh` adapter then submits the episode to that existing DSH Web Host
+using `RSS_DSH_HOST_TOKEN`; it does not spawn an SDK runtime. The Host creates
+one native Agent/Session per configured agent, persists their transcripts and
+attachments, and attaches them to native workspaces. UNI still owns the MCP
+executor and environment cleanup. Admission is never retried: disconnect or
+Host restart interrupts planning and does not establish robot stop. Cancellation
+waits for the Host's planner-disposal acknowledgement before the adapter closes
+its executor endpoint. Without `webHost`, the standalone SDK path remains the
+default. Credentials are transmitted in memory, never written to the run spec.
+
 The backend serves the executor through a token-protected `HttpMcpServer`,
 writes `dsh/run.json` with the assembled prompt, prompt images and tool
 declarations, and runs one SDK runtime with `/rss-episode <run.json>`. Each tool

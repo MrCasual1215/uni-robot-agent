@@ -1,6 +1,6 @@
 """DeepSeek Harness planner backend.
 
-One episode runs one DeepSeek Harness SDK runtime. The runtime profile mounts a
+An episode uses an existing local Web Host or one DeepSeek Harness SDK runtime. The runtime profile mounts a
 plugin that registers the ``/rss-episode`` command; the command receives this
 episode's prompt, tool declarations and a private MCP endpoint over the UNI
 executor, and runs one or more Harness agents against it. Model routes and
@@ -23,7 +23,7 @@ from uni_robot_agent.services.mcp.http import HttpMcpServer
 
 TOKEN_ENV = "RSS_UNI_MCP_TOKEN"
 SPEC_KEYS = {"agents", "protocol", "maxRounds", "dshBin", "profile", "patches", "env", "proposalTimeoutS",
-             "maxNudges", "nativeTools", "permissionPreset", "jointCompaction"}
+             "maxNudges", "nativeTools", "permissionPreset", "jointCompaction", "webHost"}
 
 
 def load_spec(path: str) -> dict[str, Any]:
@@ -32,6 +32,14 @@ def load_spec(path: str) -> dict[str, Any]:
     unknown = set(spec) - SPEC_KEYS
     if unknown:
         raise ValueError(f"Unknown DeepSeek Harness spec keys: {sorted(unknown)}")
+    if "webHost" in spec:
+        from urllib.parse import urlsplit
+        if not isinstance(spec["webHost"], str):
+            raise ValueError("webHost must be a loopback HTTP URL")
+        target = urlsplit(spec["webHost"])
+        if (target.scheme != "http" or target.hostname != "127.0.0.1" or not target.port
+                or target.username or target.password or target.path not in ("", "/") or target.query or target.fragment):
+            raise ValueError("webHost must be http://127.0.0.1:<port>")
     agents = spec.get("agents")
     if not isinstance(agents, list) or not 1 <= len(agents) <= 2:
         raise ValueError("A DeepSeek Harness spec declares one or two agents")
@@ -133,8 +141,6 @@ class DshAgent:
 
     def run(self, *, prompt, task, toolkit, executor, max_turns=0, event_bus=None, session_dir=None,
             model_endpoint=None, code_policy=None) -> AgentResult:
-        from deepseek_harness import DeepSeekHarness
-
         if model_endpoint is not None:
             raise ValueError("The dsh backend does not use a UNI model endpoint")
         if code_policy is not None:
@@ -155,12 +161,17 @@ class DshAgent:
                                                tool_event_source=self.capabilities.tool_event_source))
             env = {TOKEN_ENV: token, **{name: os.environ[name] for name in self.spec.get("env", []) if name in os.environ}}
             first = self.spec["agents"][0]
-            harness = DeepSeekHarness(
-                dsh_home=str(session_dir / "dsh" / "home"), cwd=str(session_dir / "dsh" / "work"),
-                profile=self.spec.get("profile", "sdk"), patches=tuple(self.spec.get("patches", [])),
-                dsh_bin=self.spec.get("dshBin"), provider=first["provider"], model=first["model"],
-                env=env, initialize_timeout_seconds=120,
-            )
+            if self.spec.get("webHost"):
+                from .web_host import WebHostHarness
+                harness = WebHostHarness(self.spec["webHost"], str(run_config), session_dir.name, token)
+            else:
+                from deepseek_harness import DeepSeekHarness
+                harness = DeepSeekHarness(
+                    dsh_home=str(session_dir / "dsh" / "home"), cwd=str(session_dir / "dsh" / "work"),
+                    profile=self.spec.get("profile", "sdk"), patches=tuple(self.spec.get("patches", [])),
+                    dsh_bin=self.spec.get("dshBin"), provider=first["provider"], model=first["model"],
+                    env=env, initialize_timeout_seconds=120,
+                )
             (session_dir / "dsh" / "work").mkdir(parents=True, exist_ok=True)
             with self._lock:
                 if self.stop_reason:
