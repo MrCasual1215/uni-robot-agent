@@ -71,7 +71,15 @@ declaration carries `gated` from its execution policy (`mutates_world`); the
 profile plugin must route gated calls through one execution entry. The plugin
 writes `dsh/coordination/summary.json`; success requires an executed `finish`.
 Cancellation closes the runtime and does not establish that a submitted robot
-action stopped. Only `tool_calling` interaction is supported.
+action stopped. If an existing Web Host stops answering, the run ends with
+`stop_reason="host_unavailable"`; a cancellation error never replaces the
+error that ended the run.
+
+RoboDojo also offers `tool_profile="direct_reachability"`: the Direct tools plus
+read-only `check_reachability`, which runs the environment's goal-region IK
+search for proposed grasp-site goals without stepping physics and reports the
+translation and rotation from the measured pose. Coordinators can use it to
+check proposals; it is not a collision check. Only `tool_calling` interaction is supported.
 
 ## Adding an agent
 

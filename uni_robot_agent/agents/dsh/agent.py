@@ -88,6 +88,7 @@ class DshAgent:
         self.timeout_s = timeout_s
         self.harness = None
         self.stop_reason: str | None = None
+        self.cancel_error: str | None = None
         self._lock = threading.Lock()
 
     def model_runtime(self, profile, event_bus):
@@ -99,7 +100,10 @@ class DshAgent:
             harness = self.harness
         if harness is not None:
             # Closing the runtime stops planning; it does not stop a submitted robot action.
-            harness.close()
+            try:
+                harness.close()
+            except Exception as error:  # noqa: BLE001 - run() reports the episode outcome.
+                self.cancel_error = f"{type(error).__name__}: {error}"
 
     def close(self) -> None:
         self.cancel(self.stop_reason or "closed")
@@ -200,6 +204,9 @@ class DshAgent:
             raise AgentInterrupted(result)
         except Exception as error:  # noqa: BLE001 - recorded as the agent outcome.
             result.error = f"{type(error).__name__}: {error}"
+            if type(error).__name__ == "HostUnavailable":
+                # Infrastructure loss, distinct from a planner or model failure.
+                result.stop_reason = "host_unavailable"
         finally:
             if timer is not None:
                 timer.cancel()
@@ -207,6 +214,7 @@ class DshAgent:
                 self.harness = None
             server.stop()
             result.stop_reason = result.stop_reason or self.stop_reason
+            result.cleanup_error = result.cleanup_error or self.cancel_error
             if result.stop_reason:
                 result.success = False
             result.tool_calls = executor.tool_execution_seq

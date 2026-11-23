@@ -6,7 +6,11 @@ import os
 import threading
 from types import SimpleNamespace
 from urllib.parse import urlsplit
-from http.client import HTTPConnection
+from http.client import HTTPConnection, HTTPException
+
+
+class HostUnavailable(RuntimeError):
+    """The DSH Web Host stopped answering; planner state and robot stop are unknown."""
 
 
 class WebHostHarness:
@@ -21,6 +25,7 @@ class WebHostHarness:
         self.token = os.environ["RSS_DSH_HOST_TOKEN"]
         self.stopped = threading.Event()
         self.settled = threading.Event()
+        self.lost = False
 
     def __enter__(self):
         return self
@@ -41,15 +46,30 @@ class WebHostHarness:
     def run(self, prompt: str):
         if self.stopped.is_set():
             raise RuntimeError("DSH run cancelled before admission")
-        self._request("run", {"configPath": self.config_path, "uniToken": self.uni_token})
+        try:
+            self._request("run", {"configPath": self.config_path, "uniToken": self.uni_token})
+        except (OSError, HTTPException) as error:
+            self.lost = True
+            raise HostUnavailable(f"DSH Web Host at {self.host}:{self.port} stopped answering during the episode: "
+                                  f"{type(error).__name__}: {error}") from error
         self.settled.set()
         return SimpleNamespace(finish_reason="completed", final_response="")
 
     def close(self):
         self.stopped.set()
-        if not self.settled.is_set():
+        if self.settled.is_set() or self.lost:
+            return
+        try:
             # The acknowledgement covers planner disposal, never physical robot stop.
             self._request("cancel", {"runId": self.run_id}, timeout=120)
+        except (OSError, HTTPException) as error:
+            self.lost = True
+            raise HostUnavailable(f"DSH Web Host did not acknowledge cancellation: {type(error).__name__}: {error}") from error
 
-    def __exit__(self, *_):
-        self.close()
+    def __exit__(self, exc_type, exc, traceback):
+        try:
+            self.close()
+        except Exception:
+            # Keep the failure that ended the run; a cleanup error must not replace it.
+            if exc_type is None:
+                raise

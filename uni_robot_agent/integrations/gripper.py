@@ -55,6 +55,21 @@ CLEAN_TOOLS = (CLEAN_GRIPPER_MODULE, CLEAN_SCENE_MODULE,
                  replace(EPISODE_MODULE, model_view=result_view))
 
 DIRECT_TOOLS = (SKILLS_MODULE, SCENE_MODULE, GRIPPER_MODULE, EPISODE_MODULE)
+
+
+def _reachability(session):
+    from uni_robot_agent.tools.gripper.reachability import ReachabilityTools
+    return ReachabilityTools(session.episode)
+
+
+def _reachability_policies():
+    from uni_robot_agent.tools.gripper.reachability import tool_policies
+    return tool_policies()
+
+
+# Direct tools plus a read-only IK reachability query, for coordinators that check proposals.
+REACHABILITY_MODULE = ToolModule("reachability", _reachability, _reachability_policies())
+DIRECT_REACHABILITY_TOOLS = (*DIRECT_TOOLS, REACHABILITY_MODULE)
 HYBRID_TOOLS = (SKILLS_MODULE, SCENE_MODULE, GRIPPER_MODULE, HYBRID_MODULE, EPISODE_MODULE)
 
 
