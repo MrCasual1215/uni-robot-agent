@@ -43,6 +43,25 @@ change native shell availability, SDK sandbox settings or process permissions.
 Deployments sharing a host must enforce their required process boundary in the
 launcher or container configuration; a working directory is not such a boundary.
 
+## DeepSeek Harness
+
+Select `--agent dsh --model <label> --dsh-spec <spec.json>` (Python API:
+`AgentConfig(agent_backend="dsh", model=..., dsh_spec=...)`). The spec names one
+or two Harness agents (`id`, `provider`, `model`, optional `reasoningEffort`), the
+coordination `protocol`, the `dsh` executable, profile and patch files, and the
+environment variable names forwarded to the runtime. Model routes and
+credentials belong to the Harness profile; `--provider-url` is rejected and no
+UNI gateway is created, so model records are the Harness Session logs.
+
+The backend serves the executor through a token-protected `HttpMcpServer`,
+writes `dsh/run.json` with the assembled prompt, prompt images and tool
+declarations, and runs one SDK runtime with `/rss-episode <run.json>`. Each tool
+declaration carries `gated` from its execution policy (`mutates_world`); the
+profile plugin must route gated calls through one execution entry. The plugin
+writes `dsh/coordination/summary.json`; success requires an executed `finish`.
+Cancellation closes the runtime and does not establish that a submitted robot
+action stopped. Only `tool_calling` interaction is supported.
+
 ## Adding an agent
 
 1. Add a package under `agents/<name>/` with `__init__.py`.

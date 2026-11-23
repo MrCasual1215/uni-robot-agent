@@ -75,6 +75,10 @@ class ParallelToolExecutor(ToolExecutor):
         if overlap:
             raise ValueError(f"tool names reserved by runtime controls: {sorted(overlap)}")
 
+    def tool_policy(self, name: str) -> ToolExecutionPolicy:
+        """Expose the declared policy, e.g. whether a tool mutates the world."""
+        return self._policies.get(name, ToolExecutionPolicy())
+
     def get_tool_schemas(self) -> list[dict[str, Any]]:
         return self._toolkit.get_tool_schemas() + [
             spec for spec in self._controls.get_tool_schemas()

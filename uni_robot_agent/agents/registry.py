@@ -43,6 +43,7 @@ _BUILTIN_AGENTS: dict[str, str] = {
     "opencode": "uni_robot_agent.agents.opencode.agent:OpenCodeAgent",
     "antigravity": "uni_robot_agent.agents.antigravity.agent:AntigravityAgent",
     "gemini_cli": "uni_robot_agent.agents.gemini_cli.agent:GeminiCliAgent",
+    "dsh": "uni_robot_agent.agents.dsh.agent:DshAgent",
 }
 
 

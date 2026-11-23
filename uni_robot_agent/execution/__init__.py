@@ -127,6 +127,10 @@ class ToolExecutor(ABC):
         """Execute one call and return a runtime result."""
         ...
 
+    def tool_policy(self, name: str) -> "ToolExecutionPolicy | None":
+        """Return the execution policy of a tool, or None when this runtime has no policies."""
+        return None
+
     def submit(self, name: str, arguments: dict[str, Any]) -> ExecutionResult:
         """Submit through the same policies; serial executors complete inline."""
         return self.call(name, arguments)

@@ -273,6 +273,7 @@ class AgentConfig(BaseModel):
     mcp_timeout_s: int | None = Field(default=None, gt=0)
     claude_max_budget_usd: float | None = Field(default=None, gt=0, allow_inf_nan=False)
     claude_effort: Literal["low", "medium", "high", "max"] | None = None
+    dsh_spec: str | None = None
 
 
 class SessionConfig(BaseModel):
@@ -338,6 +339,8 @@ class SessionConfig(BaseModel):
                 for name in agent.model_fields_set
             ):
                 raise ValueError("Codex settings require agent_backend='codex'")
+            if agent.agent_backend != "dsh" and "dsh_spec" in agent.model_fields_set:
+                raise ValueError("DeepSeek Harness settings require agent_backend='dsh'")
             if agent.agent_backend != "claude_code" and any(
                 name.startswith("claude_") for name in agent.model_fields_set
             ):
