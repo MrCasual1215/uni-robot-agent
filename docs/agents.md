@@ -76,9 +76,18 @@ action stopped. If an existing Web Host stops answering, the run ends with
 error that ended the run.
 
 RoboDojo also offers `tool_profile="direct_reachability"`: the Direct tools plus
-read-only `check_reachability`, which runs the environment's goal-region IK
+read-only `preview_move`, which dry-runs a move through the executor's own motion
+program (`tools/gripper/preview.py`): every waypoint is planned by the environment's
+`plan_pose` (native IK and joint-delta guard from the predicted joints, no physics)
+and the arm is assumed to track exactly. It reports whether the path reaches the
+goal, the stop reason, the cost (`predicted_steps`, `joint_path_rad`), the
+predicted final poses and openings, the commanded opening change from the
+measured opening (`opening_change_m`), and the executor's arrival tolerance. The
+profile also has read-only `check_reachability`, which runs the environment's goal-region IK
 search for proposed grasp-site goals without stepping physics and reports the
-translation and rotation from the measured pose. Coordinators can use it to
+translation and rotation from the measured pose, the closest solution's joint
+travel (`diagnostics.max_joint_delta_rad`), and the retained gripper target that a
+move omitting `gripper_opening_m` keeps (`retained_opening_m`). Coordinators can use it to
 check proposals; it is not a collision check. Only `tool_calling` interaction is supported.
 
 ## Adding an agent

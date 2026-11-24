@@ -22,6 +22,7 @@ from uni_robot_agent.integrations.robodojo.environment.kinematics import (
     grasp_pose,
     native_pose,
     native_opening,
+    pose,
     physical_opening,
     transform,
 )
@@ -139,6 +140,7 @@ class Adapter:
         from .ik.curobo import acquire_solvers
         self.ik_solvers = self._native_call(self.env, self._solver_factory or acquire_solvers)
         self.description.metadata["goal_region_search"] = True
+        self.description.metadata["pose_plan"] = True
         return self.read_state()
 
     def _initialize_robot_geometry(self):
@@ -303,6 +305,36 @@ class Adapter:
             request.position_tolerance_m, request.orientation_tolerance_rad,
         ))
         return GoalRegionReply(state_version=state.state_version, **result)
+
+    def plan_pose(self, command: PoseCommand, joints: dict[str, list[float]]) -> dict[str, Any]:
+        """The step_pose planning stage from supplied joints, with predicted control poses; no physics."""
+        self._active()
+        self._complete(command)
+        if command.solver != "native":
+            raise RequestRejected("Pose plans support the native solver only")
+        if set(joints) != set(self.robots) or any(len(values) != 6 for values in joints.values()):
+            raise RequestRejected("Pose plans need six joints for every arm")
+        holds = {name: target for name, target in command.arms.items() if isinstance(target, JointTarget)}
+        action = {}
+        for name, target in command.arms.items():
+            if isinstance(target, ArmCommand):
+                action[f"{name}_ee_pose"] = native_pose(target.pose.position, target.pose.quaternion)
+                action[f"{name}_ee_joint_state"] = [target.gripper]
+        plan = plan_eef_step(
+            self.env, self.robots, action, ik_joint_delta_guard=self.ik_joint_delta_guard,
+            slot=self.slot, joint_holds={name: target.model_dump() for name, target in holds.items()},
+            solve=self._solve_ik, current_joints=joints,
+        )
+        commands = plan.pop("commands", None)
+        if not plan["accepted"]:
+            return {"accepted": False, "diagnostics": plan}
+        arms = {}
+        for name, command_row in commands.items():
+            q = np.asarray(command_row["joints"], dtype=float)
+            site = pose(self.fk.root(name) @ self.fk.fk[name].matrix(q))
+            arms[name] = {"joints": q.tolist(),
+                          "control_pose": {"position": site["position"], "quaternion": site["quaternion_wxyz"]}}
+        return {"accepted": True, "diagnostics": plan, "arms": arms}
 
     def step_pose(self, command: PoseCommand) -> StepReceipt:
         self._active()

@@ -3,6 +3,7 @@ from typing import Any, Protocol
 
 from .contracts import (
     GoalRegionRequest,
+    PosePlanRequest,
     GoalRegionReply,
     ActionCommand,
     EnvironmentDescription,
@@ -43,6 +44,11 @@ class ProgressBackend(Protocol):
 class PathBackend(Protocol):
     """Optional whole-path capability, declared by environment metadata ``motion_execution: wholepath``."""
     def step_path(self, command: PathCommand) -> StepReceipt: ...
+
+
+class PosePlanBackend(Protocol):
+    """Optional solve-only capability: one pose step planned from supplied joints, no physics."""
+    def plan_pose(self, command: PoseCommand, joints: dict[str, list[float]]) -> dict[str, Any]: ...
 
 
 class GoalRegionBackend(Protocol):

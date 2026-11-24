@@ -66,6 +66,9 @@ class _OwnerThreadBackend:
     def preview_joints(self, commands):
         return self._call(self.backend.preview_joints, commands)
 
+    def plan_pose(self, command, joints):
+        return self._call(self.backend.plan_pose, command, joints)
+
     def capture(self, cameras=None, *, high_resolution=False):
         return self._call(self.backend.capture, cameras, high_resolution=high_resolution)
 

@@ -112,7 +112,7 @@ have no network superclass, socket server or facade.
 
 | Service | Important routes | State ownership |
 |---|---|---|
-| Environment | `GET /info`, `/snapshots/latest`, `/snapshots/{id}`, `/records`, `/artifacts/{id}`, `/requests/{id}`, `/outcome`, `/progress` (when supported); `POST /steps`, `/previews`, `/captures`, `/finish` | Prepared episode, native state, immutable snapshots, ordered execution receipts |
+| Environment | `GET /info`, `/snapshots/latest`, `/snapshots/{id}`, `/records`, `/artifacts/{id}`, `/requests/{id}`, `/outcome`, `/progress` (when supported); `POST /steps`, `/previews`, `/pose-plans` and `/goal-regions` (when supported), `/captures`, `/finish` | Prepared episode, native state, immutable snapshots, ordered execution receipts |
 | Actor | `GET /healthz`, `/info`; `POST /sessions`; `GET`/`DELETE /sessions/{id}`; `POST /predict`; `GET /sessions/{id}/requests/{id}` | Model identity, explicit inference sessions, RNG, sequence and inference receipts |
 | Perception | `GET /healthz`, `/info`; `POST /segment` | Model instance, bounded inference queue and embedding cache |
 

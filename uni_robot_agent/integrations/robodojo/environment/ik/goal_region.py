@@ -62,10 +62,13 @@ def search(recovery, site_fk, current, goal, position_tolerance, orientation_tol
         if not valid.all():
             return None
         result = pose(actual)
+        # The closest legal solution's joint travel: large spans risk a branch switch mid-move.
+        delta = np.abs(q - current)
         return {"found": True, "pose": {"position": result["position"],
                                          "quaternion": result["quaternion_wxyz"]},
                 "diagnostics": {"source": source, "search_margin": SEARCH_MARGIN,
                                 "position_error_m": pe, "orientation_error_rad": re,
+                                "max_joint_delta_rad": float(delta.max()), "joint_delta_rad": delta.tolist(),
                                 "physical_steps": 0, **counts}}
 
     try:

@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from uni_robot_agent.artifacts.mirror import RemoteArtifactMirror
 from uni_robot_agent.services.environment.contracts import (
     GoalRegionRequest,
+    PosePlanRequest,
     GoalRegionReply,
     ActionReply,
     CaptureRequest,
@@ -140,6 +141,9 @@ class EnvironmentClient:
 
     def preview(self, request: PreviewRequest) -> dict:
         return self._post("previews", request)
+
+    def plan_pose(self, request: PosePlanRequest) -> dict:
+        return self._post("pose-plans", request)
 
     def solve_goal_region(self, request: GoalRegionRequest) -> GoalRegionReply:
         return GoalRegionReply.model_validate(self._post("goal-regions", request))

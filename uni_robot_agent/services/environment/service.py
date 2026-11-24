@@ -12,6 +12,7 @@ from typing import Any
 
 from uni_robot_agent.services.environment.contracts import (
     GoalRegionRequest,
+    PosePlanRequest,
     GoalRegionReply,
     ActionReply,
     CaptureRequest,
@@ -237,6 +238,21 @@ class EnvironmentService:
                 if self.backend.read_state().state_version != request.expected_state_version:
                     raise RequestRejected("Preview observation is stale")
                 result = self.backend.preview_joints(request.commands)
+            except Exception as error:
+                self._fail(identity, error, "not_started")
+                raise
+            self._complete(identity, result)
+            return result
+
+    def plan_pose(self, identity: RequestIdentity, request: PosePlanRequest) -> dict:
+        with self._motion_lock:
+            self._begin(identity)
+            try:
+                if not hasattr(self.backend, "plan_pose"):
+                    raise RequestRejected("Environment does not support pose plans")
+                if self.backend.read_state().state_version != request.expected_state_version:
+                    raise RequestRejected("Pose plan observation is stale")
+                result = self.backend.plan_pose(request.command, request.joints)
             except Exception as error:
                 self._fail(identity, error, "not_started")
                 raise

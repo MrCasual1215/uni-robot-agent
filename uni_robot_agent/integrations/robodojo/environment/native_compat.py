@@ -77,8 +77,12 @@ def create_native(task, app, output, *, root):
     return env
 
 
-def plan_eef_step(env, robots, action, *, ik_joint_delta_guard=False, slot=0, joint_holds=None, solve=None):
-    """Validate native IK targets, optionally rejecting large joint deltas before physics."""
+def plan_eef_step(env, robots, action, *, ik_joint_delta_guard=False, slot=0, joint_holds=None, solve=None,
+                  current_joints=None):
+    """Validate native IK targets, optionally rejecting large joint deltas before physics.
+
+    ``current_joints`` replaces the measured joints per arm, for planning from a predicted configuration.
+    """
     import numpy as np
 
     commands, diagnostics = {}, {}
@@ -89,7 +93,8 @@ def plan_eef_step(env, robots, action, *, ik_joint_delta_guard=False, slot=0, jo
             diagnostics[arm] = {"held_joints": True}
             continue
         manager = env.robot_manager
-        current = np.asarray(manager.get_joint(robot)[slot], dtype=float)
+        current = np.asarray(current_joints[arm] if current_joints and arm in current_joints
+                             else manager.get_joint(robot)[slot], dtype=float)
         result = (solve(arm, action[f"{arm}_ee_pose"], current) if solve is not None else
                   manager.solve_ik(target_pose=action[f"{arm}_ee_pose"], env_idx=slot, robot=robot))
         diagnostics[arm] = {"ik_status": result["status"], "current_joints": current.tolist(),

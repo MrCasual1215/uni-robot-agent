@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict
 
 from .contracts import (
     GoalRegionRequest,
+    PosePlanRequest,
     CaptureRequest,
     FinishRequest,
     PreviewRequest,
@@ -128,6 +129,10 @@ def build_router(service: EnvironmentService | None = None, *,
     @router.post("/previews")
     def preview(body: Envelope[PreviewRequest], current: Current):
         return current.preview(body.identity, body.payload)
+
+    @router.post("/pose-plans")
+    def pose_plan(body: Envelope[PosePlanRequest], current: Current):
+        return current.plan_pose(body.identity, body.payload)
 
     @router.post("/goal-regions")
     def goal_region(body: Envelope[GoalRegionRequest], current: Current):

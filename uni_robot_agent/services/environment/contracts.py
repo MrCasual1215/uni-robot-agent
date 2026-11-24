@@ -206,6 +206,13 @@ class PreviewRequest(Contract):
     expected_state_version: int = Field(ge=0, strict=True)
 
 
+class PosePlanRequest(Contract):
+    """Plan one pose step from supplied joints without stepping physics (motion previews)."""
+    command: PoseCommand
+    joints: dict[str, list[FiniteFloat]]
+    expected_state_version: int = Field(ge=0, strict=True)
+
+
 class GoalRegionRequest(Contract):
     """Solve-only query about an immutable final control-frame goal."""
     arm: str = Field(min_length=1)
