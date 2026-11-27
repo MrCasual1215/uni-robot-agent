@@ -14,7 +14,7 @@ checkpoints remain separate.
 | `robouse` | Direct simulation tasks, including LIBERO and RoboCasa | Prepared profile-specific RoboUse environment |
 | `libero_plus` | Official LIBERO-Plus perturbation tasks, Direct control | [Separate pinned LIBERO-Plus runtime](libero-extensions.md) |
 | `robotwin` | RoboTwin 2.0 dual-arm tasks, Direct control | [Pinned RoboTwin runtime and assets](robotwin.md) |
-| `libero_pro` | Selected official LIBERO-PRO suites, Direct control | [Separate pinned LIBERO-PRO runtime](libero-extensions.md#libero-pro) |
+| `libero_pro` | Selected official LIBERO-PRO suites, Direct control | [Managed setup or a separately prepared service](libero-extensions.md#libero-pro) |
 | `rmbench` | Memory-dependent dual-arm manipulation, Direct control | [Pinned RMBench runtime and assets](rmbench.md) |
 | `calvin` | Single-task Panda episodes, Direct control | [Pinned CALVIN environment and annotations](calvin.md) |
 | `robolab` | RoboLab DROID, Direct scalar-gripper control | Prepared RoboLab/Isaac environment; RGB cameras |

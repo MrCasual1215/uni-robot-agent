@@ -22,6 +22,7 @@ configured package index. Prepare only the runtimes you need:
 ```bash
 uni-robot-agent setup --integration robodojo
 uni-robot-agent setup --integration robouse --runtime-profile mujoco
+uni-robot-agent setup --integration libero_pro
 uni-robot-agent setup --service actor --profile robodojo_pi05
 uni-robot-agent setup --service sam3
 ```

@@ -13,6 +13,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+SUITE_OPTIONS = ("suite", "init_state_index", "settle_steps", "max_steps")
+
 
 @dataclass(frozen=True)
 class Recipe:
@@ -106,6 +108,10 @@ def validate_deployment(args):
         service != 'env' or args.integration != 'robodojo'
     ):
         raise ValueError('--camera-calibration/--no-camera-calibration only apply to RoboDojo environment deployment')
+    if (service != "env" or args.integration != "libero_pro") and any(
+        getattr(args, name, None) is not None for name in SUITE_OPTIONS
+    ):
+        raise ValueError("Suite and initial-state options apply to LIBERO-PRO environment deployment")
     adapter = adapter_for(args)
     adapter.validate(args)
     if getattr(args, 'port', None) is not None and not 1 <= args.port <= 65535:
@@ -146,6 +152,10 @@ def add_launch_arguments(parser, *, managed=False):
     parser.add_argument('--depth', action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument('--camera-calibration', action=argparse.BooleanOptionalAction, default=None,
                         help='RoboDojo environment deployment only; disabling requires --no-depth')
+    parser.add_argument("--suite", help="Native LIBERO-PRO task suite")
+    parser.add_argument("--init-state-index", type=int, help="LIBERO-PRO initial-state index (default: 0)")
+    parser.add_argument("--settle-steps", type=int, help="LIBERO-PRO initialization settle steps (default: 10)")
+    parser.add_argument("--max-steps", type=int, help="LIBERO-PRO episode step budget (default: suite budget)")
 
 
 def environment_options(values):
@@ -213,3 +223,7 @@ class DeploymentConfig(RuntimeConfig):
     cameras: list[str] | None = None
     depth: bool | None = None
     camera_calibration: bool | None = None
+    suite: str | None = None
+    init_state_index: int | None = Field(default=None, ge=0)
+    settle_steps: int | None = Field(default=None, gt=0)
+    max_steps: int | None = Field(default=None, gt=0)

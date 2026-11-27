@@ -105,6 +105,9 @@ def resolve_settings(args, integration_spec, *, explicit=(), agent_enabled=True)
         if args.context_policy != owner and (used := explicit & flags):
             raise ValueError(f"{sorted(used)[0]} requires --context-policy {owner}")
     local = getattr(args, "deploy", None) == "local"
+    from uni_robot_agent.services.deployment.config import SUITE_OPTIONS, validate_deployment
+    if not local and any(getattr(args, name, None) is not None for name in SUITE_OPTIONS):
+        raise ValueError("Suite and initial-state options require --deploy local")
     if getattr(args, "camera_calibration", None) is not None and not local:
         raise ValueError("--camera-calibration/--no-camera-calibration require --deploy local; "
                          "configure an external environment service at startup instead")
@@ -113,7 +116,6 @@ def resolve_settings(args, integration_spec, *, explicit=(), agent_enabled=True)
     if not args.env_url and not local:
         raise ValueError("--env-url or UNI_ROBOT_AGENT_ENV_URL is required (or select --deploy local)")
     if local:
-        from uni_robot_agent.services.deployment.config import validate_deployment
         validate_deployment(args)
     if args.observation_profile != "none":
         if args.resource_scheduling != "per-resource":

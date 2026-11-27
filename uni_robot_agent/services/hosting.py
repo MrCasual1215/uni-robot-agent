@@ -236,8 +236,8 @@ class HttpServer:
             raise RuntimeError("HTTP host failed") from self._failure
 
 
-def serve(app, host="127.0.0.1", port=0):
-    server = HttpServer(app, host, port)
+def serve(app, host="127.0.0.1", port=0, *, sock=None):
+    server = HttpServer(app, host, port, sock=sock)
     previous = {}
     if threading.current_thread() is threading.main_thread():
         for signum in (signal.SIGINT, signal.SIGTERM):

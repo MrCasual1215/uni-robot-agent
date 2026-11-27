@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add managed LIBERO-PRO setup and episode deployment with pinned task data,
+  suite and initial-state selection, and official BDDL task instructions.
+
 - Share precise local-computation cancellation guidance across Clean, Direct,
   Hybrid and Code as Policy instead of limiting it to Code as Policy.
 

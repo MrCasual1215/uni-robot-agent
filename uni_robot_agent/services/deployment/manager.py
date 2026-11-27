@@ -146,6 +146,9 @@ def run_local(args):
                 args._monitor_parent = True
             service.start()
             args.env_url = service.url
+            if "metadata.task_index" in service.record["expected"]:
+                # Readiness verified the selected index. Sessions verify the native task name.
+                args.task = service.info["metadata"]["task_id"]
             if monitor is not None:
                 monitor.attach(service.url)
             args._episode_identity = service.info

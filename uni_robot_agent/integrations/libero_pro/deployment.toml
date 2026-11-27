@@ -1,0 +1,13 @@
+name = "libero-pro"
+python = "python3.11"
+repository = "https://github.com/Zxy-MLlab/LIBERO-PRO.git"
+task_data_repository = "zhouxueyang/LIBERO-Pro"
+task_data_revision = "c86fc3b8293185a6f373677018ff3e37f8391602"
+torch = "torch==2.7.1+cpu"
+torch_index = "https://download.pytorch.org/whl/cpu"
+packages = [
+    "bddl==1.0.1", "cloudpickle==2.2.1", "easydict==1.13", "future>=1,<2",
+    "gym==0.26.2", "h5py>=3,<4", "matplotlib>=3.7,<4",
+    "mujoco==3.3.0", "numpy==1.26.4", "PyYAML>=6,<7", "robosuite==1.4.0", "scipy>=1.10,<2",
+    "termcolor>=2,<4",
+]

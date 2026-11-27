@@ -1,6 +1,7 @@
 """Assembly helpers for externally prepared, Direct gripper simulations."""
 import argparse
 import json
+from socket import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -59,7 +60,7 @@ def server_parser(description, port):
     return parser
 
 
-def serve_episode(factory, args, integration):
+def serve_episode(factory, args, integration, *, listen_fd: int | None = None):
     from uni_robot_agent.artifacts.store import ArtifactStore
     from uni_robot_agent.services.environment.contracts import EpisodeInfo
     from uni_robot_agent.services.environment.owner import OwnedAdapter
@@ -81,7 +82,8 @@ def serve_episode(factory, args, integration):
                            capabilities=["pose", "published_observations"])
         service = EnvironmentService(adapter, info, artifacts)
         service.initialize()
-        serve(create_app(build_router(service)), host=args.host, port=args.port)
+        listener = socket(fileno=listen_fd) if listen_fd is not None else None
+        serve(create_app(build_router(service)), host=args.host, port=args.port, sock=listener)
     finally:
         if service is not None:
             service.close()

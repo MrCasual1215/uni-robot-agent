@@ -1,4 +1,5 @@
 """Serve one LIBERO-Plus task with its official perturbations and initial state."""
+from hashlib import sha256
 from pathlib import Path
 
 from uni_robot_agent.integrations.simulation import server_parser, serve_episode, source_root
@@ -16,7 +17,7 @@ def parser(*, suites=tuple(BUDGETS), description=__doc__, port=18781):
     return p
 
 
-def prepare(args, *, benchmark_name="libero_plus", revision=REVISION):
+def prepare(args, *, benchmark_name="libero_plus", revision=REVISION, task_data_root: Path | None = None):
     import os
     import yaml
 
@@ -28,9 +29,10 @@ def prepare(args, *, benchmark_name="libero_plus", revision=REVISION):
     config = args.output_dir.expanduser().resolve() / "libero-config"
     config.mkdir(parents=True)
     native = root / "libero/libero"
+    task_data = native if task_data_root is None else task_data_root.expanduser().resolve(strict=True)
     (config / "config.yaml").write_text(yaml.safe_dump({
-        "benchmark_root": str(native), "bddl_files": str(native / "bddl_files"),
-        "init_states": str(native / "init_files"), "assets": str(native / "assets"),
+        "benchmark_root": str(native), "bddl_files": str(task_data / "bddl_files"),
+        "init_states": str(task_data / "init_files"), "assets": str(native / "assets"),
         "datasets": str(root / "datasets"),
     }))
     os.environ["LIBERO_CONFIG_PATH"] = str(config)
@@ -48,10 +50,18 @@ def prepare(args, *, benchmark_name="libero_plus", revision=REVISION):
         raise ValueError("Unsupported robosuite image convention")
     suite = benchmark.get_benchmark_dict()[args.suite](task_order_index=0)
     names = suite.get_task_names()
+    if not args.task.isdecimal() and args.task not in names:
+        raise ValueError(f"Unknown task {args.task!r} for suite {args.suite}")
     index = int(args.task) if args.task.isdecimal() else names.index(args.task)
     if not 0 <= index < len(names):
         raise ValueError("Task index is outside the selected suite")
     task = suite.get_task(index)
+    bddl_path = Path(suite.get_task_bddl_file_path(index))
+    task_identity = {}
+    if benchmark_name == "libero_pro":
+        init_path = task_data / "init_files" / task.problem_folder / task.init_states_file
+        task_identity = {"bddl_sha256": sha256(bddl_path.read_bytes()).hexdigest(),
+                         "init_states_sha256": sha256(init_path.read_bytes()).hexdigest()}
     states = suite.get_task_init_states(index)
     if args.init_state_index >= len(states):
         raise ValueError("Initial-state index is outside the official task's states; no modulo wrapping")
@@ -59,7 +69,7 @@ def prepare(args, *, benchmark_name="libero_plus", revision=REVISION):
     if base_suite is None and args.max_steps is None:
         raise ValueError("Supply --max-steps for a suite without a declared default")
     max_steps = args.max_steps or BUDGETS[base_suite]
-    env = OffScreenRenderEnv(bddl_file_name=suite.get_task_bddl_file_path(index),
+    env = OffScreenRenderEnv(bddl_file_name=str(bddl_path),
                             camera_names=list(CAMERAS), camera_heights=256, camera_widths=256,
                             camera_depths=args.depth, horizon=max_steps + args.settle_steps, ignore_done=True)
     try:
@@ -71,11 +81,12 @@ def prepare(args, *, benchmark_name="libero_plus", revision=REVISION):
         # The final settling observation has passed through the corruption wrapper.
         if env.check_success():
             raise ValueError("Task is already successful after settling; reject this initial state")
-        return LiberoAdapter(env, obs, episode_id=args.run_id, instruction=task.language,
+        instruction = env.language_instruction if benchmark_name == "libero_pro" else task.language
+        return LiberoAdapter(env, obs, episode_id=args.run_id, instruction=instruction,
             metadata={"benchmark": benchmark_name, "native_revision": revision, "suite": args.suite,
                       "task_id": task.name, "task_index": index, "init_state_index": args.init_state_index,
                       "seed": args.seed, "settle_steps": args.settle_steps, "max_steps": max_steps,
-                      "evaluation_profile": "direct-rgbd" if args.depth else "direct-rgb"},
+                      "evaluation_profile": "direct-rgbd" if args.depth else "direct-rgb", **task_identity},
             max_steps=max_steps, depth_enabled=args.depth, convention=macros.IMAGE_CONVENTION)
     except BaseException:
         env.close()

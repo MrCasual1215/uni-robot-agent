@@ -5,7 +5,7 @@ Stock LIBERO remains available through `--integration robouse`. The separate
 initial states, corrupted observations and success predicates with the shared
 Direct gripper tools. It does not change existing RoboUse tasks.
 
-## Prepare a native runtime
+## Prepare a LIBERO-Plus runtime
 
 Use an isolated Linux service environment with Python 3.11+, `robosuite==1.4.0`,
 the `benchmarks` extra and the matching uni-robot-agent runtime distribution. Follow the
@@ -26,14 +26,12 @@ git -C /persistent/LIBERO-plus checkout 4976dc30028e805ff8094b55501d532c48fec182
 Prepare the official assets in that checkout. The server checks its pinned
 revision and rejects tracked modifications. Native code and assets are external,
 not included in the harness wheel. Native import, asset and rendering failures
-are setup failures, not task failures. Automatic `setup` / `--deploy local`
-recipes are not provided for this integration.
+are setup failures, not task failures. Start the LIBERO-Plus service separately.
 
 The official Plus archive includes parent directories before `assets/`. Place
 the actual contents under `libero/libero/assets`, including the scene XMLs,
 object meshes and textures needed by each selected task. Extracting only object
-meshes is insufficient. PRO's generated BDDL and initial states are distributed
-separately from its Git source; obtain the official files for the selected suite.
+meshes is insufficient.
 
 With PyTorch 2.6 or newer, the pinned upstream loader can reject official pickle
 initial states under the new `weights_only=True` default. For verified, trusted
@@ -41,7 +39,7 @@ upstream initial-state files, set `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1` in the
 native service process. This enables pickle loading; do not use it with
 untrusted state files.
 
-## Start one episode
+## Start one LIBERO-Plus episode
 
 In the native service interpreter:
 
@@ -56,7 +54,7 @@ In the planner interpreter:
 
 ```bash
 uni-robot-agent run --integration libero_plus --env-url http://127.0.0.1:18781 \
-  --model MODEL --action-profile direct --no-sam3
+  --model MODEL --tool-profile direct --no-sam3
 ```
 
 `--task` on the service accepts an official task name or zero-based index.
@@ -91,23 +89,54 @@ vendored by this integration.
 ## LIBERO-PRO
 
 `libero_pro` reuses the same OSC, snapshot and outcome adapter, with a separate
-native process and pinned [LIBERO-PRO source](https://github.com/Zxy-MLlab/LIBERO-PRO).
-Prepare its dependencies and official assets in a separate runtime, then use:
+native process. On Linux x86-64, prepare an isolated Python 3.11 runtime with the
+pinned [LIBERO-PRO source](https://github.com/Zxy-MLlab/LIBERO-PRO) and
+[official task data](https://huggingface.co/datasets/zhouxueyang/LIBERO-Pro/tree/c86fc3b8293185a6f373677018ff3e37f8391602).
+
+```bash
+uni-robot-agent setup --integration libero_pro
+
+uni-robot-agent run --integration libero_pro --deploy local \
+  --suite libero_spatial_swap --task 0 --init-state-index 0 --seed 0 \
+  --model MODEL --tool-profile direct --no-sam3
+```
+
+For a source checkout, pass the matching native wheel via `setup --wheel`.
+See [local deployment](deployment.md#prepare-an-unreleased-build).
+Setup downloads the official task files for the `_object`, `_swap`, `_task`
+and `_lan` variants. The four base suites use the pinned source tree's task files.
+Headless rendering defaults to EGL. `deploy env --integration libero_pro` accepts
+the same episode options and starts the service in the foreground for a separate
+planner. SDK callers can pass `suite`, `task` and `init_state_index` to
+`DeploymentConfig`.
+
+Managed runs accept either an official task name or a zero-based index within
+the suite. The service publishes the official name, instruction from the BDDL,
+initial-state index and input file hashes. RGB, seed 0 and initial-state index 0
+are the defaults. Use `--depth` with the Direct tool profile for RGB-D. To
+reproduce a custom episode budget, pass `--settle-steps` and `--max-steps`.
+
+### Use a separately prepared runtime
+
+Prepare the native dependencies and task assets, then launch the server from
+that interpreter. For the downloaded perturbation files, pass the directory
+containing `bddl_files/` and `init_files/` as `--task-data-root`. Apply the
+PyTorch initial-state setting above when using a trusted official archive with
+PyTorch 2.6 or newer.
 
 ```bash
 git clone https://github.com/Zxy-MLlab/LIBERO-PRO.git /persistent/LIBERO-PRO
 git -C /persistent/LIBERO-PRO checkout eafdb809426b13153aa1e4c42d6601844217dfec
 python -m uni_robot_agent.integrations.libero_pro.server \
   --native-root /persistent/LIBERO-PRO --suite libero_spatial_swap --task 0 \
+  --task-data-root /persistent/libero-pro-task-data \
   --init-state-index 0 --seed 0 --run-id pro-spatial-swap-0 \
   --output-dir /persistent/runs/pro-spatial-swap-0 --no-depth --port 18782
 ```
 
 Connect the planner with `--integration libero_pro --env-url http://127.0.0.1:18782`.
-The four base suites and their `_env`, `_object`, `_swap`, `_task`, `_lan` variants
-are admitted. Initial states must exist for the exact selected task; the adapter
-does not borrow another task's states, repair BDDL, generate OOD tasks or relabel
-generated tasks as official. A missing task or asset stops preparation.
+The `_env` variants require separately supplied paired BDDL and initialization
+files. The service requires the files for the exact selected task.
 
 For multi-trial evaluation, enumerate official initial-state indices explicitly
 and retain the native revision, suite, task name, seed and budget with each result.
