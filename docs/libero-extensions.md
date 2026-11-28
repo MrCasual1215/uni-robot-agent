@@ -143,6 +143,20 @@ and retain the native revision, suite, task name, seed and budget with each resu
 The Plus one-trial recommendation does not apply to PRO. These integrations do
 not expand RoboUse's separate task-admission list.
 
+### Move previews
+
+The LIBERO-family adapter answers pose plans (`pose_plan` metadata), so the
+`direct_reachability` tool profile of `libero_pro` adds `preview_move`.
+Each planned step forms the OSC goal as the real command does (finger-pad
+offset, then the controller's per-step output clipping) and solves it with
+damped least squares on a copy of the MuJoCo model, within the joint limits.
+The live simulation is never stepped or modified. The arm is assumed to reach
+the solved joints in one control step, so a preview predicts fewer steps than
+the real OSC motion needs and does not model collisions, contact, torque
+limits or tracking lag. An unreachable goal returns the closest joints found;
+the motion program's progress checks then report the stall. `check_reachability`
+is not exposed, because these environments have no goal-region search.
+
 ## Native validation scope
 
 Real Linux/MuJoCo HTTP probes exercised Plus `libero_spatial` tasks 0 (table
