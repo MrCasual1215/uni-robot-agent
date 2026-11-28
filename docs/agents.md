@@ -48,7 +48,8 @@ launcher or container configuration; a working directory is not such a boundary.
 Select `--agent dsh --model <label> --dsh-spec <spec.json>` (Python API:
 `AgentConfig(agent_backend="dsh", model=..., dsh_spec=...)`). The spec names one
 or two Harness agents (`id`, `provider`, `model`, optional `reasoningEffort`), the
-coordination `protocol`, the `dsh` executable, profile and patch files, and the
+coordination `protocol`, optional plugin-owned `protocolOptions` passed through
+to the episode, the `dsh` executable, profile and patch files, and the
 environment variable names forwarded to the runtime. Model routes and
 credentials belong to the Harness profile; `--provider-url` is rejected and no
 UNI gateway is created, so model records are the Harness Session logs.

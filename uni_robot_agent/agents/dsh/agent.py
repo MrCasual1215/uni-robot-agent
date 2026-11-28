@@ -22,7 +22,7 @@ from uni_robot_agent.events import AgentRunStarted
 from uni_robot_agent.services.mcp.http import HttpMcpServer
 
 TOKEN_ENV = "RSS_UNI_MCP_TOKEN"
-SPEC_KEYS = {"agents", "protocol", "maxRounds", "dshBin", "profile", "patches", "env", "proposalTimeoutS",
+SPEC_KEYS = {"agents", "protocol", "protocolOptions", "maxRounds", "dshBin", "profile", "patches", "env", "proposalTimeoutS",
              "peerGraceS", "maxNudges", "nativeTools", "permissionPreset", "jointCompaction", "judge", "webHost"}
 
 
@@ -132,7 +132,7 @@ class DshAgent:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(image.data)
             images.append({"mime": image.mime_type, "path": str(path)})
-        keys = ("agents", "protocol", "maxRounds", "proposalTimeoutS", "peerGraceS", "maxNudges", "nativeTools",
+        keys = ("agents", "protocol", "protocolOptions", "maxRounds", "proposalTimeoutS", "peerGraceS", "maxNudges", "nativeTools",
                 "permissionPreset", "jointCompaction", "judge")
         config = {key: self.spec[key] for key in keys if key in self.spec}
         config.update(runId=session_dir.name, outputDir=str(root / "coordination"), workdir=str(root / "work"),
