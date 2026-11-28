@@ -150,10 +150,11 @@ The LIBERO-family adapter answers pose plans (`pose_plan` metadata), so the
 Each planned step forms the OSC goal as the real command does (finger-pad
 offset, then the controller's per-step output clipping) and solves it with
 damped least squares on a copy of the MuJoCo model, within the joint limits.
-The live simulation is never stepped or modified. The arm is assumed to reach
-the solved joints in one control step, so a preview predicts fewer steps than
-the real OSC motion needs and does not model collisions, contact, torque
-limits or tracking lag. An unreachable goal returns the closest joints found;
+The live simulation is never stepped or modified. Each step reaches a fixed
+share (0.22) of the clipped goal, fitted to real Panda OSC moves of 5-15 cm:
+predicted steps were 0.75-1.07 of the real count (0.97 on average), with the
+largest underestimate on the precision profile. Previews do not model
+collisions, contact or torque limits. An unreachable goal returns the closest joints found;
 the motion program's progress checks then report the stall. `check_reachability`
 is not exposed, because these environments have no goal-region search.
 

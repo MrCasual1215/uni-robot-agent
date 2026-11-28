@@ -11,6 +11,9 @@ IK_ITERATIONS = 60
 IK_MAX_STEP_RAD = 0.2
 IK_POSITION_TOLERANCE_M = 1e-4
 IK_ROTATION_TOLERANCE_RAD = 1e-3
+# Share of the clipped OSC goal one control step reaches. Fitted on LIBERO-PRO Panda moves of 5-15 cm with the
+# standard, approach and precision profiles: predicted/real primitive steps 0.97 on average (0.75-1.07).
+OSC_TRACKING_FRACTION = 0.22
 
 
 class OSC:
@@ -93,8 +96,8 @@ class OSC:
         """One pose step from supplied arm joints, on a kinematic copy of the model; the live simulation is untouched.
 
         The OSC goal is formed as ``encode`` forms it (fingerpad offset, then the controller's per-step output
-        clipping) and solved by damped least squares within the joint limits. The arm is assumed to reach the
-        solved joints in one step: no physics, contact, torque limits or OSC tracking lag. An unreachable goal
+        clipping), scaled by ``OSC_TRACKING_FRACTION`` for the share a real control step tracks, and solved by
+        damped least squares within the joint limits. No physics, contact or torque limits. An unreachable goal
         returns the closest joints found, so the motion program's progress checks decide when a move stalls.
         ``joints`` maps an arm to its seven joint angles, or to an empty list for the measured joints.
         """
@@ -119,7 +122,7 @@ class OSC:
             local_offset = current_rotation.inv().apply(centre - data.site_xpos[site])
             native_target = np.asarray(target.pose.position) - target_rotation.apply(local_offset)
             delta = np.r_[native_target - data.site_xpos[site], (target_rotation * current_rotation.inv()).as_rotvec()]
-            delta = np.clip(delta, np.asarray(controller.output_min), np.asarray(controller.output_max))
+            delta = np.clip(delta, np.asarray(controller.output_min), np.asarray(controller.output_max)) * OSC_TRACKING_FRACTION
             goal_position = data.site_xpos[site] + delta[:3]
             goal_rotation = Rotation.from_rotvec(delta[3:]) * current_rotation
             joint_ids, dofs = robot._ref_joint_indexes, robot._ref_joint_vel_indexes
