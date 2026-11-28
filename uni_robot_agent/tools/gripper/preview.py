@@ -49,7 +49,9 @@ class KinematicPreviewBackend:
             return StepReceipt(accepted=False, state=self.read_state(), diagnostics=reply.get("diagnostics", {}))
         for name, planned in reply["arms"].items():
             arm = self._state.arms[name]
-            delta = np.asarray(planned["joints"], float) - np.asarray(arm.joints, float)
+            # A backend that plans from measured joints it does not publish reports the step's joint change itself.
+            delta = (np.asarray(planned["joint_delta"], float) if "joint_delta" in planned
+                     else np.asarray(planned["joints"], float) - np.asarray(arm.joints, float))
             self.joint_path_rad += float(np.linalg.norm(delta))
             self.max_step_joint_delta_rad = max(self.max_step_joint_delta_rad, float(np.max(np.abs(delta))))
             arm.joints = list(planned["joints"])

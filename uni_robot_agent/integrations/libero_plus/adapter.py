@@ -57,7 +57,9 @@ class LiberoAdapter:
                 has_depth=depth_enabled and not (name == "agentview" and self.distorted_agentview),
                 has_calibration=not (name == "agentview" and self.distorted_agentview)) for name in CAMERAS],
             control_frequency_hz=20.0, max_episode_steps=max_steps,
-            metadata={"control_constraints": self.binding.constraint, "observation_source": "native_libero_wrapper"},
+            metadata={"control_constraints": self.binding.constraint, "observation_source": "native_libero_wrapper",
+                      # Kinematic pose plans for move previews (OSC.plan); they never step the simulation.
+                      "pose_plan": True},
         )
 
         from uni_robot_agent.integrations.robot_resources import add_robot_resources, mujoco_robot_model
@@ -91,6 +93,18 @@ class LiberoAdapter:
         self.success = bool(self.env.check_success())
         self.ended = bool(done or self.success or self.steps >= self.max_steps)
         return StepReceipt(accepted=True, state=self.read_state(), diagnostics={"executed_steps": 1})
+
+    def plan_pose(self, command, joints):
+        """Plan one pose step from supplied joints without stepping physics (move previews)."""
+        if self.ended or self.closed:
+            raise RequestRejected("Episode has ended")
+        self.validate_commands([command], "pose")
+        if set(joints) != {"arm"}:
+            raise RequestRejected("Pose plans need joints for arm (an empty list selects the measured joints)")
+        arms = self.binding.plan(command.arms, joints)
+        return {"accepted": True, "arms": arms,
+                "diagnostics": {"solver": "kinematic_dls", "arms": {name: {key: value for key, value in arm.items()
+                                if key in {"residual_m", "residual_rad", "at_joint_limit"}} for name, arm in arms.items()}}}
 
     def step_joints(self, command):
         raise RequestRejected("Joint control is unavailable")

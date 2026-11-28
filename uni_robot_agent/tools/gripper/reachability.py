@@ -16,7 +16,7 @@ from uni_robot_agent.services.environment.contracts import GoalRegionRequest, Po
 from uni_robot_agent.tools.gripper.contracts import MOTION_PROFILES, MoveRequest, motion_profiles
 from uni_robot_agent.tools.gripper.pose import quaternion_distance, rpy_to_quaternion
 from uni_robot_agent.tools.gripper.preview import preview_move
-from uni_robot_agent.tools.gripper.provider import POSE6
+from uni_robot_agent.tools.gripper.provider import OPENING, POSE6
 from uni_robot_agent.tools.toolkit import ToolOutput, ToolProvider, ToolSpec, bind_tools, schema
 
 NAME = "check_reachability"
@@ -34,8 +34,14 @@ class ReachabilityTools(ToolProvider):
     def __init__(self, episode):
         self.episode = episode
 
+    @property
+    def _opening_key(self):
+        # The same opening argument as move: metres with calibrated opening models, else the normalized drive target.
+        return "gripper_opening_m" if self.episode.description.environment.metadata.get("gripper_opening_models") else "gripper"
+
     def get_tools(self):
-        arms = [arm.name for arm in self.episode.description.environment.arms]
+        environment = self.episode.description.environment
+        arms = [arm.name for arm in environment.arms]
         target = schema({"arm": {"type": "string", "enum": arms}, "pose": POSE6}, ("arm", "pose"))
         spec = ToolSpec(NAME,
             "Check whether absolute grasp-site goals have an IK solution from the measured joints, without moving. "
@@ -44,8 +50,9 @@ class ReachabilityTools(ToolProvider):
             schema({"targets": {"type": "array", "items": target, "minItems": 1, "maxItems": len(arms)},
                     "profile": {"type": "string", "enum": list(MOTION_PROFILES), "default": "standard"}},
                    ("targets",)), readonly=True)
+        opening = {"type": "number"} if self._opening_key == "gripper_opening_m" else OPENING
         move_target = schema({"arm": {"type": "string", "enum": arms}, "pose": POSE6,
-                              "gripper_opening_m": {"type": "number"}}, ("arm", "pose"))
+                              self._opening_key: opening}, ("arm", "pose"))
         preview = ToolSpec(PREVIEW,
             "Dry-run a move with the executor's own motion program and IK planner, without stepping physics. "
             "Takes the move arguments and reports whether the planner accepts the whole path (accepted, stop_reason), "
@@ -57,7 +64,9 @@ class ReachabilityTools(ToolProvider):
                     "position_tolerance_m": {"type": "number"},
                     "orientation_tolerance_rad": {"type": "number"}},
                    ("targets",)), readonly=True)
-        return bind_tools([spec, preview], provider_id=self.provider_id,
+        # Expose the IK query only where the environment can answer it.
+        specs = [spec, preview] if environment.metadata.get("goal_region_search") else [preview]
+        return bind_tools(specs, provider_id=self.provider_id,
                           handlers={NAME: self.check_reachability, PREVIEW: self.preview_move})
 
     def preview_move(self, targets, profile="standard", max_steps=24,
@@ -69,8 +78,14 @@ class ReachabilityTools(ToolProvider):
         result = preview_move(self.episode.env, state, request)
         for target in targets:
             metadata = state.arms[target["arm"]].metadata
-            # An omitted opening keeps the retained drive target.
             final = result["final"][target["arm"]]
+            if self._opening_key == "gripper":
+                # Normalized drive target (0 closed, 1 open); an omitted opening keeps the retained command.
+                arm = state.arms[target["arm"]]
+                final["gripper"] = target.get("gripper", arm.gripper_command)
+                final["gripper_change"] = abs(float(final["gripper"]) - float(arm.gripper_command))
+                continue
+            # An omitted opening keeps the retained drive target.
             final["opening_m"] = target.get(
                 "gripper_opening_m", metadata.get("gripper_target_opening_m", metadata.get("gripper_opening_m")))
             # How far the commanded opening moves from the measured one: the gripper's share of the state change.
